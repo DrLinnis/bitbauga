@@ -8,10 +8,15 @@ def create_repo_if_unavailable(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-def print_welcome_message():
+def list_folders(p, name_filter=None):
+    dir_filter = lambda f: (f.is_dir() and name_filter in f.name) if name_filter else f.is_dir()
+    return [f.name for f in p.iterdir() if dir_filter(f)]
+
+def print_welcome_message(root_path):
     print("###################################################################")
     print("# Welcome to BitBauga. You have now initialized your environment! #")
     print("###################################################################")
+    print("\nMeta-Layers:\n -", '\n - '.join(list_folders(root_path, "meta")))
 
 # Root directory
 bitbauga_path = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -36,7 +41,7 @@ create_repo_if_unavailable(temp_path)
 create_repo_if_unavailable(build_path)
 create_repo_if_unavailable(workspace_path)
 
-print_welcome_message()
+print_welcome_message(root_path)
 
 # Automatically detect host shell and drop user into configured environment
 shell = os.environ.get("SHELL") or ("powershell.exe" if platform.system() == "Windows" else "bash")
