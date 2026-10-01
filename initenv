@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+# python host script setup
+import os, subprocess, platform
+from pathlib import Path
+
+def create_repo_if_unavailable(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def print_welcome_message():
+    print("###################################################################")
+    print("# Welcome to BitBauga. You have now initialized your environment! #")
+    print("###################################################################")
+
+# Root directory
+root_path = Path(os.path.dirname(os.path.realpath(__file__)))
+os.chdir(root_path)
+
+# Standard relevant folders
+build_path = root_path / "build"            # Build target directories
+temp_path = root_path / "tmp"               # Temporary data
+workspace_path = root_path / "workspace"    # Checked out recipes
+script_path = root_path / "scripts"
+
+# Setup environment variables
+os.environ["BB_ROOT_DIR"] = str(root_path)
+os.environ["BB_TEMP_DIR"] = str(temp_path)
+os.environ["BB_BUILD_DIR"] = str(build_path)
+os.environ["BB_WORKSPACE"] = str(workspace_path)
+os.environ["PATH"] += os.pathsep + str(script_path)
+
+# Create directories
+create_repo_if_unavailable(temp_path)
+create_repo_if_unavailable(build_path)
+create_repo_if_unavailable(workspace_path)
+
+print_welcome_message()
+
+# Automatically detect host shell and drop user into configured environment
+shell = os.environ.get("SHELL") or ("powershell.exe" if platform.system() == "Windows" else "bash")
+subprocess.run([shell])

@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+import sys
+
+def main() -> int:
+    """Echo the input arguments to standard output"""
+    phrase = ' '.join(sys.argv)
+    print(phrase)
+    print("CALLED DEVTOOL")
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
