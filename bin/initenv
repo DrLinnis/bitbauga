@@ -14,14 +14,15 @@ def print_welcome_message():
     print("###################################################################")
 
 # Root directory
-root_path = Path(os.path.dirname(os.path.realpath(__file__)))
+bitbauga_path = Path(os.path.dirname(os.path.realpath(__file__)))
+root_path = bitbauga_path / ".."
 os.chdir(root_path)
 
 # Standard relevant folders
-build_path = root_path / "build"            # Build target directories
-temp_path = root_path / "tmp"               # Temporary data
-workspace_path = root_path / "workspace"    # Checked out recipes
-script_path = root_path / "scripts"
+build_path = bitbauga_path / "build"            # Build target directories
+temp_path = bitbauga_path / "tmp"               # Temporary data
+workspace_path = bitbauga_path / "workspace"    # Checked out recipes
+script_path = bitbauga_path / "scripts"
 
 # Setup environment variables
 os.environ["BB_ROOT_DIR"] = str(root_path)

@@ -1,4 +1,4 @@
 # General bitbauga ignore set
-build/
-tmp/
-workspace/
+bin/build/
+bin/tmp/
+bin/workspace/
