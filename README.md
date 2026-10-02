@@ -11,9 +11,13 @@ Just like the cross-border region, this tool acts as a cross-platform tool inspi
 
 To initialize, run the pythonscript located in [bin/initenv](bin/initenv).
 
-### Windows
+### Windows (PowerShell)
 ```c
-TODO
+python3 '.\bin\initenv'
+```
+And then **after** the first environment has launched
+```c
+. '.\bin\tmp\init_env.ps1'
 ```
 
 ### Unix (Linux and MacOS)
