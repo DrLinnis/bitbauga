@@ -1,13 +1,103 @@
 #!/usr/bin/env python3
 
+import argparse
 import sys
+import os
+from pathlib import Path
 
-def main() -> int:
-    """Echo the input arguments to standard output"""
-    phrase = ' '.join(sys.argv)
-    print(phrase)
-    print("CALLED DEVTOOL")
+class Recipe:
+    def __init__(self, recipe_path: Path):
+
+        name_format = recipe_path.name.split('.')[0]
+        name_split = name_format.split('_')
+
+        self.recipe_path = recipe_path
+        self.name = name_split[0]
+        self.version = name_split[1] if len(name_split) > 1 else None
+
+
+def handle_list(args: argparse.Namespace) -> int:
+    directory = Path(os.environ["BB_ROOT_DIR"])
+
+    match args.item:
+        case 'layers':
+            items = [
+                f.name for f in directory.iterdir()
+                if f.is_dir() and f.name.startswith("meta")
+            ]
+        case 'recipes':
+            items = [
+                Recipe(f).name for f in directory.rglob("*/*/*.bb")
+                if f.is_file()
+            ]
+        case _:
+            return -1;
+
+    if args.verbose:
+        print("--> Running in verbose mode...")
+        print(f"Target item: {args.item}")
+
+    if args.filter:
+        items = [ i for i in items if args.filter in i ]
+
+    if args.limit and len(items) > args.limit:
+        items = items[1:(args.limit + 1)]
+
+    print('\n'.join(items))
+
     return 0
 
-if __name__ == '__main__':
+
+def setup_list_parser(list_parser):
+    list_parser.add_argument(
+        "item",
+        choices=["layers", "recipes"],
+        help="list devtool items (default: 'layers')."
+    )
+
+    list_parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=None,
+        help="Maximum number of items to return (default: None)."
+    )
+
+    list_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        default=False,
+        help="Enable detailed verbose output (default: False)."
+    )
+
+    list_parser.add_argument(
+        "-f", "--filter",
+        type=str,
+        default=None,
+        help="Filter by name (default: None)."
+    )
+
+
+def handle_modify(args: argparse.Namespace) -> int:
+    print("TODO: Modify repo: {recipes}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Devtool utility")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # List subparser
+    list_parser = subparsers.add_parser("list", help="List devtool items")
+    setup_list_parser(list_parser)
+    list_parser.set_defaults(func=handle_list)
+
+    modify_parser = subparsers.add_parser("modify", help="Modify devtool repos")
+    modify_parser.set_defaults(func=handle_modify)
+
+    # Parse inputs and dispatch directly to handle_list
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
     sys.exit(main())
