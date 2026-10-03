@@ -15,10 +15,6 @@ To initialize, run the pythonscript located in [bin/initenv](bin/initenv).
 ```c
 python3 '.\bin\initenv'
 ```
-And then **after** the first environment has launched
-```c
-. '.\bin\tmp\init_env.ps1'
-```
 
 ### Unix (Linux and MacOS)
 ```c

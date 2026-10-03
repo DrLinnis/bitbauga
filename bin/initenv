@@ -4,9 +4,6 @@
 import os, subprocess, platform
 from pathlib import Path
 
-if os.name == "nt":
-    from colorama import Fore, init
-
 def create_repo_if_unavailable(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -22,26 +19,16 @@ def print_welcome_message(root_path):
     print("\nMeta-Layers:\n -", '\n - '.join(list_folders(root_path, "meta")), '\n')
 
 def configure_os_helpers(script_path):
+    # Create batch wrappers on Windows so they work globally via PATH
     if os.name == "nt":
-        commands = f"""
-            function bitbauga {{
-                python "{script_path}/bitbauga" @args
-            }}
-            function devtool {{
-                python "{script_path}/devtool" @args
-            }}
-            Write-Host "Dynamic devtool and Bitbauga loaded!" -ForegroundColor Green
-        """
+        bitbauga_cmd = script_path / "bitbauga.cmd"
+        devtool_cmd = script_path / "devtool.cmd"
 
-        powershell_helper = os.path.join(os.environ.get("BB_TEMP_DIR"), "init_env.ps1")
-        with open(powershell_helper, "w") as f:
-            f.write(commands)
+        with open(bitbauga_cmd, "w") as f:
+            f.write('@echo off\npython "%~dp0bitbauga" %*\n')
 
-        init(autoreset=True)
-        print(Fore.YELLOW + "Run this in your PowerShell terminal to load them:")
-        print(Fore.WHITE + f" . '{powershell_helper}'\n")
-    else:
-        os.environ["PATH"] += os.pathsep + str(script_path)
+        with open(devtool_cmd, "w") as f:
+            f.write('@echo off\npython "%~dp0devtool" %*\n')
 
 # Root directory
 bitbauga_path = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -59,6 +46,7 @@ os.environ["BB_ROOT_DIR"] = str(root_path)
 os.environ["BB_TEMP_DIR"] = str(temp_path)
 os.environ["BB_BUILD_DIR"] = str(build_path)
 os.environ["BB_WORKSPACE"] = str(workspace_path)
+os.environ["PATH"] += os.pathsep + str(script_path)
 
 # Create directories
 create_repo_if_unavailable(temp_path)

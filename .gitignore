@@ -2,3 +2,6 @@
 bin/build/
 bin/tmp/
 bin/workspace/
+
+# OS-specific ignores
+*.cmd
