@@ -94,11 +94,29 @@ class ModifyParser(IParserStructure):
 
 class InspectParser(IParserStructure):
     def handle_callback(self, args: Namespace) -> int:
-        print("TODO: Inspect recipe: {recipes}")
+        directory = Path(os.environ["BB_ROOT_DIR"])
+
+        matching_recipe_paths = [f for f in directory.rglob(f"meta*/recipe-*/*/{args.recipe}_*.bb")]
+        if len(matching_recipe_paths) == 0:
+            print(f"No matching recipe found to {args.recipe}")
+            return -1
+
+        if len(matching_recipe_paths) > 1:
+            print(f"Conflicting recipes found to {args.recipe}")
+            return -1
+
+        recipe = Recipe(matching_recipe_paths[0]).parse_recipe()
+        print(recipe.__str__(verbose=True))
+
         return 0
 
     def setup(self):
-        pass
+        self.parser.add_argument(
+            "recipe",
+            type=str,
+            default=None,
+            help="list devtool items (default: 'layers')."
+        )
 
 
 def main() -> int:

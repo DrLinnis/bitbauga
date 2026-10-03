@@ -14,3 +14,7 @@ Item set as `recipes` list all of the recipes available in your repo, without th
 
 ### List: Categories
 Item set as `catagories` list all of the recipe catagories used in your repo.
+
+## Devtool function: Inspect
+
+All recipes can be inspected to figure out their dependencies, source content, and realized definition
