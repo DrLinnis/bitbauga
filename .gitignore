@@ -3,5 +3,8 @@ bin/build/
 bin/tmp/
 bin/workspace/
 
+# Python specific ignores
+__pycache__
+
 # OS-specific ignores
 *.cmd
