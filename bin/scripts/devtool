@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import argparse
-import sys
-import os
+import os, sys
+from argparse import Namespace, ArgumentParser
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 class Recipe:
     def __init__(self, recipe_path: Path):
@@ -16,88 +16,108 @@ class Recipe:
         self.version = name_split[1]
 
 
-def handle_list(args: argparse.Namespace) -> int:
-    directory = Path(os.environ["BB_ROOT_DIR"])
+class IParserStructure(ABC):
+    @abstractmethod
+    def handle_callback(self, args: Namespace) -> int:
+        pass
 
-    match args.item:
-        case 'layers':
-            items = [
-                d.name for d in directory.iterdir()
-                if d.is_dir() and d.name.startswith("meta")
-            ]
-        case 'recipes':
-            items = [
-                Recipe(f).name for f in directory.rglob("meta*/recipe-*/*/*_*.bb")
-                if f.is_file()
-            ]
-        case 'categories':
-            items = [
-                g.name for g in directory.rglob("meta*/recipe-*")
-                if g.is_dir() and g.name.startswith("recipe-")
-            ]
-        case _:
-            return -1;
+    def setup(self):
+        pass
 
-    if args.verbose:
-        print("--> Running in verbose mode...")
-        print(f"Target item: {args.item}")
-
-    if args.filter:
-        items = [ i for i in items if args.filter in i ]
-
-    if args.limit and len(items) > args.limit:
-        items = items[1:(args.limit + 1)]
-
-    print('\n'.join(items))
-
-    return 0
+    def __init__(self, parser: ArgumentParser):
+        self.parser = parser
+        self.setup()
+        parser.set_defaults(func=self.handle_callback)
 
 
-def setup_list_parser(list_parser):
-    list_parser.add_argument(
-        "item",
-        choices=["layers", "recipes", "categories"],
-        help="list devtool items (default: 'layers')."
-    )
+class ListParser(IParserStructure):
+    def handle_callback(self, args: Namespace) -> int:
+        directory = Path(os.environ["BB_ROOT_DIR"])
 
-    list_parser.add_argument(
-        "-l", "--limit",
-        type=int,
-        default=None,
-        help="Maximum number of items to return (default: None)."
-    )
+        match args.item:
+            case 'layers':
+                items = [
+                    d.name for d in directory.iterdir()
+                    if d.is_dir() and d.name.startswith("meta")
+                ]
+            case 'recipes':
+                items = [
+                    Recipe(f).name for f in directory.rglob("meta*/recipe-*/*/*_*.bb")
+                    if f.is_file()
+                ]
+            case 'categories':
+                items = [
+                    g.name for g in directory.rglob("meta*/recipe-*")
+                    if g.is_dir() and g.name.startswith("recipe-")
+                ]
+            case _:
+                return -1;
 
-    list_parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        default=False,
-        help="Enable detailed verbose output (default: False)."
-    )
+        if args.verbose:
+            print("--> Running in verbose mode...")
+            print(f"Target item: {args.item}")
 
-    list_parser.add_argument(
-        "-f", "--filter",
-        type=str,
-        default=None,
-        help="Filter by name (default: None)."
-    )
+        if args.filter:
+            items = [ i for i in items if args.filter in i ]
+
+        if args.limit and len(items) > args.limit:
+            items = items[1:(args.limit + 1)]
+
+        print('\n'.join(items))
+        return 0
+
+    def setup(self):
+        self.parser.add_argument(
+            "item",
+            choices=["layers", "recipes", "categories"],
+            help="list devtool items (default: 'layers')."
+        )
+
+        self.parser.add_argument(
+            "-l", "--limit",
+            type=int,
+            default=None,
+            help="Maximum number of items to return (default: None)."
+        )
+
+        self.parser.add_argument(
+            "-v", "--verbose",
+            action="store_true",
+            default=False,
+            help="Enable detailed verbose output (default: False)."
+        )
+
+        self.parser.add_argument(
+            "-f", "--filter",
+            type=str,
+            default=None,
+            help="Filter by name (default: None)."
+        )
 
 
-def handle_modify(args: argparse.Namespace) -> int:
-    print("TODO: Modify repo: {recipes}")
-    return 0
+class ModifyParser(IParserStructure):
+    def handle_callback(self, args: Namespace) -> int:
+        print("TODO: Modify repo: {recipes}")
+        return 0
+
+
+class InspectParser(IParserStructure):
+    def handle_callback(self, args: Namespace) -> int:
+        print("TODO: Inspect recipe: {recipes}")
+        return 0
+
+    def setup(self):
+        pass
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Devtool utility")
+    parser = ArgumentParser(description="Devtool utility")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # List subparser
-    list_parser = subparsers.add_parser("list", help="List devtool items")
-    setup_list_parser(list_parser)
-    list_parser.set_defaults(func=handle_list)
-
-    modify_parser = subparsers.add_parser("modify", help="Modify devtool repos")
-    modify_parser.set_defaults(func=handle_modify)
+    ListParser(subparsers.add_parser("list", help="List devtool items"))
+    ModifyParser(subparsers.add_parser("modify", help="Modify devtool repos"))
+    InspectParser(subparsers.add_parser("inspect", help=" Inspect devtool recipes"))
 
     # Parse inputs and dispatch directly to handle_list
     args = parser.parse_args()
