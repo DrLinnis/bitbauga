@@ -4,7 +4,7 @@ import os, sys
 from argparse import Namespace, ArgumentParser
 from pathlib import Path
 from abc import ABC, abstractmethod
-from classes import recipe
+from helpers import Recipe
 
 
 class IParserStructure(ABC):
