@@ -42,7 +42,11 @@ class BitBaugaData:
         lines = [l.strip() for l in lines]
         lines = [l for l in lines if len(l) > 0]
 
-        self.inherit = self.include = self.require = []
+        self.inherit = self.include \
+                     = self.require \
+                     = self.deps_runtime \
+                     = self.deps_build = []
+
         for line in lines:
             words = line.split(' ')
             match words[0]:
@@ -52,16 +56,25 @@ class BitBaugaData:
                     self.include = words[1:]
                 case "require":
                     self.require = words[1:]
+                case "DEPENDS":
+                    self.deps_build = words[1:]
+                case "RDEPENDS":
+                    self.deps_runtime = words[1:]
         self.name = filename
-        self.dependencies = self.inherit + self.include + self.require
+        self.helper_dependencies = self.inherit + self.include + self.require
+        self.recipe_dependencies = self.deps_runtime + self.deps_build
 
     def __str__(self, verbose=False):
         result = "${PN} = " + self.name
-        if self.dependencies and verbose:
+        if self.helper_dependencies and verbose:
             result += "\n"
             result += f"inherit : {self.inherit}\n" if self.inherit else ""
             result += f"include : {self.include}\n" if self.include else ""
             result += f"require : {self.require}\n" if self.require else ""
+
+        if self.recipe_dependencies and verbose:
+            result += f"build dependencies : {self.deps_build}\n" if self.deps_build else ""
+            result += f"runtime dependencies : {self.deps_runtime}\n" if self.deps_runtime else ""
 
         return result
 

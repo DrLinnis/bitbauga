@@ -1,1 +1,4 @@
-inherit base
+inherit meson
+
+include debug.inc
+require unittest
