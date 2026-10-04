@@ -106,7 +106,7 @@ class InspectParser(IParserStructure):
             return -1
 
         recipe = Recipe(matching_recipe_paths[0]).parse_recipe()
-        print(recipe.__str__(verbose=True))
+        print(recipe.__str__(verbose=args.verbose))
 
         return 0
 
@@ -115,7 +115,14 @@ class InspectParser(IParserStructure):
             "recipe",
             type=str,
             default=None,
-            help="list devtool items (default: 'layers')."
+            help="Inspect devtool recipe."
+        )
+
+        self.parser.add_argument(
+            "-v", "--verbose",
+            action="store_true",
+            default=False,
+            help="Enable detailed verbose output (default: False)."
         )
 
 
