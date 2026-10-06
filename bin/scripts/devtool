@@ -4,7 +4,7 @@ import os, sys
 from argparse import Namespace, ArgumentParser
 from pathlib import Path
 from abc import ABC, abstractmethod
-from helpers import Recipe
+from helpers import Recipe, SStateCache
 
 
 class IParserStructure(ABC):
@@ -126,6 +126,97 @@ class InspectParser(IParserStructure):
         )
 
 
+class DatabaseParser(IParserStructure):
+    def handle_callback(self, args: Namespace) -> int:
+        db = SStateCache()
+        directory = Path(os.environ["BB_ROOT_DIR"])
+
+        file_type = None
+        match args.type:
+            case "recipe":
+                file_type = "bb"
+            case "include":
+                file_type = "inc"
+            case "class":
+                file_type = "bbclass"
+            case _:
+                file_type = "*"
+        assert(file_type is not None)
+
+        layer = args.layer or 'meta'
+        item = args.item or '*'
+        file_query = f"{item}_*.{file_type}" if args.type == "recipe" else f"{item}.{file_type}"
+        file_paths = [f for f in directory.rglob(f"{layer}*/recipe-*/*/{file_query}")]
+
+        match args.operation:
+            case "clear":
+                if not args.force:
+                    print("Are you sure you want to clear the cache? Use '--force' to enable.")
+                    return -1
+
+                if args.layer is None and args.item is None:
+                    db.clear_cache()
+                    print("Cleared the full cache")
+                else:
+                    db.batch_remove_files(file_paths)
+
+            case "scan":
+                db.batch_track_files(file_paths)
+
+            case "query": # Query the database
+                if args.layer is None and args.item is None and not args.force:
+                    print("Are you sure you want to query all layers and files? Use '--force' to enable.")
+                    return -1
+
+                db_entries = db.find_files(args.layer, args.type, args.item)
+                for entry in db_entries:
+                    print(f"{entry}\n")
+
+        return 0
+
+    def setup(self):
+        self.parser.add_argument(
+            "operation",
+            choices=[
+                "clear", # Clear files
+                "scan",  # Scan files
+                "query"  # Query the scanned database
+            ],
+            default=None,
+            help="List database operations (default: None)."
+        )
+
+        self.parser.add_argument(
+            "-i", "--item",
+            default=None,
+            help="Database file items (default: All files)."
+        )
+
+        self.parser.add_argument(
+            "-t", "--type",
+            default="recipe",
+            choices=[
+                "recipe",   # Recipes - bb
+                "class",    # Classes - bbclass
+                "include"   # Include - inc
+            ],
+            help="Database file type (default: 'recipe')."
+        )
+
+        self.parser.add_argument(
+            "-l", "--layer",
+            default=None,
+            help="Apply command to specific layer only (default: All layers)."
+        )
+
+        self.parser.add_argument(
+            "-f", "--force",
+            action="store_true",
+            default=False,
+            help="Force command. Required for certain critical operations (default: False)."
+        )
+
+
 def main() -> int:
     parser = ArgumentParser(description="Devtool utility")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -133,7 +224,8 @@ def main() -> int:
     # List subparser
     ListParser(subparsers.add_parser("list", help="List devtool items"))
     ModifyParser(subparsers.add_parser("modify", help="Modify devtool repos"))
-    InspectParser(subparsers.add_parser("inspect", help=" Inspect devtool recipes"))
+    InspectParser(subparsers.add_parser("inspect", help="Inspect devtool recipes"))
+    DatabaseParser(subparsers.add_parser("database", help="Interact with database"))
 
     # Parse inputs and dispatch directly to handle_list
     args = parser.parse_args()
