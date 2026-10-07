@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import os, sys
-from argparse import Namespace, ArgumentParser
+from argparse import Namespace, ArgumentParser, ArgumentTypeError
 from pathlib import Path
 from abc import ABC, abstractmethod
-from helpers import Recipe, SStateCache
+from helpers import Recipe, SStateCache, ALLOWED_LAYER_RECIPE_CHARACTERS
 
 
 class IParserStructure(ABC):
@@ -19,6 +19,19 @@ class IParserStructure(ABC):
         self.parser = parser
         self.setup()
         parser.set_defaults(func=self.handle_callback)
+
+    @staticmethod
+    def char_set_validator(allowed_set: set):
+        """Ensures every character in the argument is within allowed_set."""
+        def validator(value: str) -> str:
+            invalid_chars = set(value) - allowed_set
+            if invalid_chars:
+                raise ArgumentTypeError(
+                    f"Invalid characters found: '{', '.join(sorted(invalid_chars))}'. "
+                    f"Allowed characters are: '{''.join(sorted(allowed_set))}'"
+                )
+            return value
+        return validator
 
 
 class ListParser(IParserStructure):
@@ -146,7 +159,7 @@ class DatabaseParser(IParserStructure):
         layer = args.layer or 'meta'
         item = args.item or '*'
         file_query = f"{item}_*.{file_type}" if args.type == "recipe" else f"{item}.{file_type}"
-        file_paths = [f for f in directory.rglob(f"{layer}*/recipe-*/*/{file_query}")]
+        file_paths = [f for f in directory.rglob(f"{layer}/recipe-*/*/{file_query}")]
 
         match args.operation:
             case "clear":
@@ -170,7 +183,7 @@ class DatabaseParser(IParserStructure):
 
                 db_entries = db.find_files(args.layer, args.type, args.item)
                 for entry in db_entries:
-                    print(f"{entry}\n")
+                    print(entry.__str__(args.verbose))
 
         return 0
 
@@ -200,12 +213,14 @@ class DatabaseParser(IParserStructure):
                 "class",    # Classes - bbclass
                 "include"   # Include - inc
             ],
+            type=IParserStructure.char_set_validator(ALLOWED_LAYER_RECIPE_CHARACTERS),
             help="Database file type (default: 'recipe')."
         )
 
         self.parser.add_argument(
             "-l", "--layer",
             default=None,
+            type=IParserStructure.char_set_validator(ALLOWED_LAYER_RECIPE_CHARACTERS),
             help="Apply command to specific layer only (default: All layers)."
         )
 
@@ -214,6 +229,13 @@ class DatabaseParser(IParserStructure):
             action="store_true",
             default=False,
             help="Force command. Required for certain critical operations (default: False)."
+        )
+
+        self.parser.add_argument(
+            "-v", "--verbose",
+            action="store_true",
+            default=False,
+            help="Enable detailed verbose output (default: False)."
         )
 
 

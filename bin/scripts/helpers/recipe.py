@@ -2,6 +2,8 @@ import re
 
 from pathlib import Path
 
+ALLOWED_LAYER_RECIPE_CHARACTERS = set("abcdefghijklmnopqrstuvwxyz0123456789-_.*")
+
 def collapse_strings_and_nested_brackets(text: str) -> str:
     # ------------------------------------------------------------------
     # Step 1: Collapse single-quote or double-quote strings across lines.

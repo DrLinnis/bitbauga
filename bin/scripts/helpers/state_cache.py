@@ -17,8 +17,10 @@ class FileState:
     last_checked: float = 0.0
 
     def __str__(self, verbose=False):
-        assert(verbose == False)
-        return f"{self.file_type}: {self.recipe_name} from {self.layer_name}"
+        result = f"{self.file_type}: '{self.recipe_name}' from '{self.layer_name}'"
+        if verbose:
+            result += f" ( version={self.version_name} )"
+        return result
 
 @staticmethod
 def get_default_state_cache_path():
@@ -59,8 +61,11 @@ class SStateCache:
         from standard directory layouts and naming conventions.
         """
         parts = file_path.parts
-        print(parts)
-        layer_name = parts[0] if len(parts) > 0 else "unknown"
+        layer_name = "unknown"
+        for part in parts:
+            if part.startswith("meta-") or part == "meta":
+                layer_name = part
+                break
         suffix = file_path.suffix.lower()
 
         # Determine file type
