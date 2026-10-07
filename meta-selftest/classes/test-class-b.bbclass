@@ -1,0 +1,1 @@
+inherit test-class-a

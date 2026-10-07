@@ -22,12 +22,33 @@ class FileState:
             result += f" ( version={self.version_name} )"
         return result
 
-@staticmethod
 def get_default_state_cache_path():
-    return Path(os.environ["BB_TEMP_DIR"]) / 'filestate_cache.bb'
+    return Path(os.environ["BB_TEMP_DIR"]) / 'filestate_cache.db'
+
+def type_str_to_extension_str(type: str):
+    match type:
+        case "recipe":
+            return "bb"
+        case "include":
+            return "inc"
+        case "class":
+            return "bbclass"
+        case "config":
+            return "conf"
+        case "append":
+            return "bbappend"
+        case _:
+            return None
+
+def extension_str_to_type_str(ext_str: str):
+    for type_str in ["recipe", "include", "class", "config", "append", None]:
+        if ext_str == f".{type_str_to_extension_str(type_str)}":
+            return type_str
+    return None
 
 class SStateCache:
-    def __init__(self, db_path: Union[str, Path] = get_default_state_cache_path()):
+    def __init__(self, verbose=False, db_path: Union[str, Path] = get_default_state_cache_path()):
+        self.verbose = verbose
         self.db_path = Path(db_path)
         self._init_db()
 
@@ -55,50 +76,59 @@ class SStateCache:
         return str(Path(file_path).resolve())
 
     @staticmethod
-    def _parse_metadata_from_path(file_path: Path) -> dict:
+    def _parse_metadata_from_path(file_path: Path, verbose=False) -> dict:
         """
-        Implicitly derives file_type, layer_name, recipe_name, and version_name
-        from standard directory layouts and naming conventions.
+        Implicitly derives file_type, layer_name, recipe_name, version_name,
+        and package_revision from standard directory layouts and naming conventions.
         """
         parts = file_path.parts
+
+        # 1. Extract Layer Name
         layer_name = "unknown"
         for part in parts:
             if part.startswith("meta-") or part == "meta":
                 layer_name = part
                 break
+
         suffix = file_path.suffix.lower()
 
-        # Determine file type
-        file_type = "unknown"
-        if suffix == ".bbclass":
-            file_type = "bbclass"
-        elif suffix in (".inc", ".h"):
-            file_type = "include"
-        elif suffix == ".bb":
-            file_type = "recipe"
-
+        # 2. Determine File Type
+        file_type = extension_str_to_type_str(suffix) or "unknown"
         recipe_name = ""
-        version_name = ""
-        package_revision = ""
+        version_name = None
+        package_revision = None
 
-        # If it's a recipe, extract name and version from filename (e.g., zlib_1.2.13.bb)
-        if file_type == "recipe":
-            stem = file_path.stem  # e.g., "zlib_1.2.13"
+        # 3. Extract Recipe / Append Metadata
+        if file_type in ("recipe", "append"):
+            stem = file_path.stem  # e.g., "zlib_1.2.13-r0"
+
+            # BitBake strictly splits at the FIRST underscore
             if "_" in stem:
-                recipe_name, version_name = stem.rsplit("_", 1)
+                recipe_name, raw_version = stem.split("_", 1)
+
+                # Extract PR (Package Revision) if present (e.g., "1.2.13-r0" or "1.2.13_r0")
+                if "-r" in raw_version:
+                    version_name, pr_part = raw_version.rsplit("-r", 1)
+                    package_revision = f"r{pr_part}"
+                else:
+                    version_name = raw_version
             else:
                 recipe_name = stem
 
-        # Fallback recipe name from parent directory if naming convention differs
-        if not recipe_name and len(parts) > 2 and parts[-2] != "recipes":
-            recipe_name = parts[-2]
+        # 4. Fallback for includes/appends where recipe_name is implied by the parent directory
+        if not recipe_name and len(parts) > 1:
+            parent = parts[-2]
+            if parent in ["classes", "conf", "include"]:
+                recipe_name = file_path.stem
+            else:
+                recipe_name = file_path.stem
 
         return {
             "file_type": file_type,
             "layer_name": layer_name,
             "recipe_name": recipe_name,
-            "version_name": version_name,
-            "package_revision": package_revision
+            "version_name": version_name or "None",
+            "package_revision": package_revision or "None"
         }
 
     def clear_cache(self):
@@ -138,7 +168,7 @@ class SStateCache:
                 continue
 
             norm_path = self._normalize_path(path)
-            meta = self._parse_metadata_from_path(path)
+            meta = self._parse_metadata_from_path(path, self.verbose)
             stat = path.stat()
 
             rows.append((
